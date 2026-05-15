@@ -38,8 +38,9 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# Raw datasets (too large for GitHub — see README for source URLs)
-data/raw/
+# Raw datasets (too large for GitHub — see data/raw/SOURCES.md for download URLs)
+data/raw/*
+!data/raw/SOURCES.md
 
 # Stale local backup snapshots — canonical versions live in dashboard/src/
 /files/

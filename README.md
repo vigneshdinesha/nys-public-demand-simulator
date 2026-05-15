@@ -159,10 +159,3 @@ To rebuild the dataset from scratch you'll also need the raw CSVs (excluded from
 ## License
 
 MIT — see [`LICENSE`](LICENSE).
-
-## About the author
-
-I'm a recent **B.S. in Computer Science & Data Science** graduate applying for **Software Engineer roles with the State of New York**. This project is a portfolio piece demonstrating that I can build a useful civic-tech tool end-to-end — from messy government PDFs all the way to a usable web product. It's not pretending to be a research contribution; it's pretending to be a tool a planner would actually use.
-
-- **GitHub** · [@vigneshdinesha](https://github.com/vigneshdinesha)
-- Open to roles, feedback, and collaborators.

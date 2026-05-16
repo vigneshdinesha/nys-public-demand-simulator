@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: nys-public-demand-simulator-api
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: DATABASE_URL
+        sync: false   # Set this in the Render dashboard with your Neon connection string
+      - key: PYTHON_VERSION
+        value: "3.11"

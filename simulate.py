@@ -86,7 +86,7 @@ class SimulationEngine:
 
     def __init__(self, coef_path: str, db_connection: str):
         self.coefs = pd.read_csv(coef_path)
-        self.engine = create_engine(db_connection)
+        self.engine = create_engine(db_connection, pool_pre_ping=True, pool_recycle=300)
         self._baseline_cache = {}
 
     def _get_region(self, county: str) -> str:

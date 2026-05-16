@@ -59,7 +59,7 @@ app.add_middleware(
 CONNECTION        = os.environ["DATABASE_URL"]
 COEFFICIENTS_PATH = "model_coefficients.csv"
 
-engine_db    = create_engine(CONNECTION)
+engine_db    = create_engine(CONNECTION, pool_pre_ping=True, pool_recycle=300)
 sim_engine   = SimulationEngine(COEFFICIENTS_PATH, CONNECTION)
 
 # ── REGION MAP (mirrors simulate.py) ─────────────────────────────────────────

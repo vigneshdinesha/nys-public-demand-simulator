@@ -2,13 +2,19 @@
 
 **A self-service analytics tool that lets county-level planners in New York State estimate, in 30 seconds, how an unemployment shock would ripple into Medicaid and SNAP demand — without pulling six datasets by hand or building a spreadsheet model from scratch.**
 
-[![Status](https://img.shields.io/badge/status-portfolio-blue)](#) [![Stack](https://img.shields.io/badge/stack-Next.js%2016%20·%20FastAPI%20·%20Postgres-2563EB)](#) [![Data](https://img.shields.io/badge/data-6%20NYS%20datasets%20·%202018–2025-14A86A)](#) [![License](https://img.shields.io/badge/license-MIT-lightgrey)](#)
+### 🔗 [Try it live → nys-public-demand-simulator.vercel.app](https://nys-public-demand-simulator.vercel.app)
+
+[![Status](https://img.shields.io/badge/status-live-14A86A)](https://nys-public-demand-simulator.vercel.app) [![Stack](https://img.shields.io/badge/stack-Next.js%2016%20·%20FastAPI%20·%20Postgres-2563EB)](#) [![Data](https://img.shields.io/badge/data-6%20NYS%20datasets%20·%202018–2025-14A86A)](#) [![License](https://img.shields.io/badge/license-MIT-lightgrey)](#)
 
 > _Built by [Vignesh Dinesha](https://github.com/vigneshdinesha) — a portfolio project demonstrating end-to-end data engineering, statistical modeling, and full-stack delivery on real New York State public data._
 
 <p align="center">
-  <img src="docs/screenshot.png" alt="NYS Demand Simulator dashboard" width="900" />
+  <a href="https://nys-public-demand-simulator.vercel.app">
+    <img src="docs/screenshot.png" alt="NYS Demand Simulator dashboard" width="900" />
+  </a>
 </p>
+
+> ⚡ The backend runs on Render's free tier — the **first request after idle takes ~30 seconds** to spin up, then snaps back to fast.
 
 ---
 

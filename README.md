@@ -14,6 +14,14 @@
   </a>
 </p>
 
+<p align="center">
+  <a href="https://www.loom.com/share/5b2a4ccf7f954d818bade26ad941ac9d">
+    <img src="https://cdn.loom.com/sessions/thumbnails/5b2a4ccf7f954d818bade26ad941ac9d-bde64b1ca978e08c.jpg" alt="Watch a 90-second demo on Loom" width="600" />
+  </a>
+  <br />
+  <strong><a href="https://www.loom.com/share/5b2a4ccf7f954d818bade26ad941ac9d">▶ Watch the 90-second demo</a></strong>
+</p>
+
 > ⚡ The backend runs on Render's free tier — the **first request after idle takes ~30 seconds** to spin up, then snaps back to fast.
 
 ---
@@ -157,10 +165,6 @@ To rebuild the dataset from scratch you'll also need the raw CSVs (excluded from
 ├── region_models.pkl        # serialized statsmodels objects
 └── requirements.txt
 ```
-
-## Demo video
-
-[`▶ Watch the 90-second demo`](#) _(Loom link)_
 
 ## License
 

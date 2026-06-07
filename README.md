@@ -1,171 +1,82 @@
-# NYS Public Demand & Policy Impact Simulator
+# NYS Public Demand Simulator
 
-**A self-service analytics tool that lets county-level planners in New York State estimate, in 30 seconds, how an unemployment shock would ripple into Medicaid and SNAP demand — without pulling six datasets by hand or building a spreadsheet model from scratch.**
+A 30-second forecasting tool for New York State county planners. Pick a county, set an unemployment shock (e.g. "+3 points in Bronx"), get back predicted Medicaid and SNAP enrollment changes with confidence intervals, budget impact, and a caseworker estimate.
 
-### 🔗 [Try it live → nys-public-demand-simulator.vercel.app](https://nys-public-demand-simulator.vercel.app)
+Live at **[nys-public-demand-simulator.vercel.app](https://nys-public-demand-simulator.vercel.app)**.
 
-[![Status](https://img.shields.io/badge/status-live-14A86A)](https://nys-public-demand-simulator.vercel.app) [![Stack](https://img.shields.io/badge/stack-Next.js%2016%20·%20FastAPI%20·%20Postgres-2563EB)](#) [![Data](https://img.shields.io/badge/data-6%20NYS%20datasets%20·%202018–2025-14A86A)](#) [![License](https://img.shields.io/badge/license-MIT-lightgrey)](#)
-
-> _Built by [Vignesh Dinesha](https://github.com/vigneshdinesha) — a portfolio project demonstrating end-to-end data engineering, statistical modeling, and full-stack delivery on real New York State public data._
-
-<p align="center">
-  <a href="https://nys-public-demand-simulator.vercel.app">
-    <img src="docs/screenshot.png" alt="NYS Demand Simulator dashboard" width="900" />
-  </a>
-</p>
-
-<p align="center">
-  <a href="https://www.loom.com/share/5b2a4ccf7f954d818bade26ad941ac9d">
-    <img src="https://cdn.loom.com/sessions/thumbnails/5b2a4ccf7f954d818bade26ad941ac9d-bde64b1ca978e08c.jpg" alt="Watch a 90-second demo on Loom" width="600" />
-  </a>
-  <br />
-  <strong><a href="https://www.loom.com/share/5b2a4ccf7f954d818bade26ad941ac9d">▶ Watch the 90-second demo</a></strong>
-</p>
-
-> ⚡ The backend runs on Render's free tier — the **first request after idle takes ~30 seconds** to spin up, then snaps back to fast.
+[![demo loom](https://img.shields.io/badge/demo-loom-blue)](https://www.loom.com/) <!-- replace with actual Loom URL when posted -->
 
 ---
 
-## What it does
+## Why it exists
 
-Pick a county. Set an unemployment shock (e.g. _"Bronx, +3 percentage points"_). In one click the simulator returns:
+Most NY counties don't have in-house data science staff. When unemployment shifts, planners need to guess how much demand is about to hit Medicaid and SNAP so they can staff and budget. Today that means either an actuary builds a model over weeks, or someone sketches a spreadsheet by hand. This is the 30-second version.
 
-- **Predicted change in Medicaid enrollment** (headcount, % change, 95% confidence interval)
-- **Predicted change in SNAP enrollment** with the same statistical envelope
-- **Annual budget impact** at the county's actual cost-per-enrollee
-- **Additional caseworkers needed** at standard OTDA staffing ratios
-- **Honest confidence tier** (high / moderate / low) — flags when the model is weak so planners don't act on noise
+The data side was the hard part. Five of the six datasets I needed were ordinary downloads. The sixth — county-level Medicaid enrollment — only exists as monthly PDF reports from the Department of Health. I wrote an extraction pipeline for those (98 monthly PDFs, 2018 through early 2026) so the dataset actually exists in queryable form.
 
-It is **not** a forecasting system, not an actuarial replacement, and not equally reliable across every county. Those caveats are surfaced inside the app, not buried in a footnote.
+## Numbers, honest
 
-## Why this is interesting (the engineering, not the modeling)
+- **Raw inputs:** ~1.64M rows across NYSDOT crashes (1.5M), NYS LAUS unemployment (94k), NYS OTDA SNAP (17k), Medicaid (6k from 98 PDFs), MTA ridership (~1k), Census ACS (~500). About 343 MB on disk.
+- **Unified panel after clean + join:** **6,048 rows × 13 fields** — 62 counties + a NYC roll-up, monthly Jan 2018 through Dec 2025 (96 months).
+- **Models:** region-segmented OLS (NYC / Suburban / Upstate) with HC3-robust standard errors. NYC Medicaid is R² ≈ 0.22, coefficient highly significant (p<0.001). Suburban and Upstate Medicaid don't show a significant unemployment signal — and the UI says so.
+- **Diagnostics committed:** Durbin-Watson, Breusch-Pagan, Shapiro-Wilk results in the repo.
 
-The headline isn't the regression. The headline is **getting six fragmented NYS datasets into one queryable shape in the first place** — none of them have ever been joined before.
+## What's interesting under the hood
 
-| Dataset | Source | What made it hard |
-|---|---|---|
-| **Medicaid enrollment** | NYS Dept. of Health | **Not published as structured data.** County-level numbers exist only inside per-month PDF reports. Built a dedicated ingestion pipeline that extracts, validates, and normalizes them into an auditable time series. |
-| Unemployment (LAUS) | NYS Dept. of Labor | Clean monthly CSV from data.ny.gov; standard. |
-| SNAP caseloads | NYS OTDA | Borough-level for NYC, county-level elsewhere — geography reconciliation needed. |
-| Motor-vehicle crashes | NYSDOT | Daily incident granularity rolled up to monthly per-county. |
-| MTA monthly ridership | MTA | System-level; joined for transit-exposure feature engineering. |
-| Population | U.S. Census Bureau | Annual ACS estimates interpolated to monthly. |
+`etl.py` is the ingestion + clean + load. The Medicaid path runs `tabula` on each monthly PDF, regex-parses the two side-by-side county columns, normalizes the county names (Kings → Brooklyn and so on), and writes the time series through a validation harness that fails loudly if a month is missing a county or shows a >25% month-over-month jump.
 
-Final unified panel: **~67,000 county-month observations, 88 columns, 2018–2025.** Loaded to Postgres (Neon), served via FastAPI, consumed by a Next.js dashboard.
+`regression.py` fits the three region-specific models, runs the full diagnostic suite, and dumps `model_coefficients.csv` + `region_models.pkl` for the API to load. Standard errors are HC3 because Breusch-Pagan flagged heteroskedasticity in NYC and Upstate Medicaid.
 
-The Medicaid PDF extraction pipeline lives in [`data/extract_medicaid.py`](data/extract_medicaid.py). It's the piece I'm most proud of — the rest of the project is a thin layer on top of a dataset that didn't exist before.
+`simulate.py` wraps the models in a `SimulationEngine` class. Confidence tiering (`CONFIDENCE_RULES`) labels every prediction high / moderate / low based on the underlying model's p-value and R², and the UI surfaces a plain-language warning next to any prediction the model can't support — e.g. "unemployment is not a significant predictor of Medicaid in this region." This is the part I'd keep even at the cost of looking less impressive.
 
-## Architecture
+`api.py` is FastAPI with pydantic request validation, auto-generated OpenAPI docs at `/docs`, and four endpoints: `/regions`, `/historical/{county}`, `/simulate`, `/simulate/scenarios`.
 
-```
-                ┌─────────────┐
-                │  data/raw/  │  (CSV downloads + DOH PDFs)
-                └──────┬──────┘
-                       │
-                       ▼
-        ┌───────────────────────────────┐
-        │  Python ETL                   │
-        │  • clean_unemployment.py      │
-        │  • clean_population.py        │
-        │  • extract_medicaid.py  ←  PDF→structured pipeline
-        │  • etl.py        (merge, join, derive per-capita rates)
-        └──────────────┬────────────────┘
-                       │
-                       ▼
-                 ┌───────────┐
-                 │ Postgres  │   (Neon — managed)
-                 │ nys_unified table
-                 └─────┬─────┘
-                       │
-       ┌───────────────┴───────────────┐
-       ▼                               ▼
-┌──────────────┐               ┌─────────────────┐
-│ regression.py│  → coefficients│ analysis.py    │
-│  (region OLS │     + pickled  │ (lag analysis, │
-│   models)    │     models     │  COVID checks) │
-└──────┬───────┘                └─────────────────┘
-       │
-       ▼
-┌──────────────────┐         ┌───────────────────┐
-│ FastAPI          │ ←─────→ │ Next.js dashboard │
-│  • /simulate     │  JSON   │ • Scenario picker │
-│  • /historical   │         │ • Confidence tier │
-│  • /scenarios    │         │ • Budget impact   │
-└──────────────────┘         └───────────────────┘
-```
+The frontend is Next.js + TypeScript + Tailwind + Recharts: county selector grouped by region, scenario slider, dual-axis historical chart with a COVID reference line, a results panel that shows the change with a confidence-tier badge, and a plain-language interpretation block.
 
-## Honest limitations
+## What it isn't
 
-These are surfaced inside the app's **About** modal — they belong here too:
+This is a planning sketch, not a forecasting system. R² peaks at about 0.22 because monthly enrollment is dominated by autocorrelation (last month predicts this month), not by unemployment. The job here is to isolate the marginal effect of a shock on top of the existing trajectory — not to explain the level. A higher R² on this data would be a red flag for leakage.
 
-- **Not a forecaster.** R² peaks at ~0.22 even for the strongest regression. The simulator estimates a shock-induced delta on top of an existing baseline trajectory, because monthly enrollment is highly autocorrelated.
-- **Not equally reliable across counties.** NYC Medicaid has a statistically significant signal (p<0.001). Upstate counties don't — driven more by demographic and disability caseloads than by labor-market fluctuations. The UI flags this explicitly.
-- **SNAP for NYC is reported by city district, not borough**, so per-borough SNAP impact cannot be estimated from this model.
-- **Not a replacement for actuarial or budget-office modeling.** It's a 30-second planning sketch, not a binding projection.
+The model uses unemployment, a time trend, a COVID dummy, and monthly seasonal terms. Crashes and MTA ridership are in the panel for cross-metric exploration in `analysis.py`, but they're deliberately not features in the simulator — I checked, they didn't add predictive power, and I'd rather scope honestly than load up.
 
-## Tech stack
+Inference soft spot: Durbin-Watson on these models sits around 0.03–0.10. HC3 doesn't correct for autocorrelation. The honest next step for inference is HAC / Newey-West standard errors or modeling the AR error structure directly. I scoped that out of v1 because the confidence tiering already prevents users from over-trusting the intervals, but I know exactly where the inferential gap is.
 
-| Layer | Tools |
-|---|---|
-| Data ingestion | Python · pandas · PDF-extraction pipeline |
-| Storage | PostgreSQL (hosted on Neon) · SQLAlchemy |
-| Modeling | statsmodels OLS with HC-robust standard errors · joblib |
-| API | FastAPI · pydantic · uvicorn |
-| Frontend | Next.js 16 (Turbopack) · TypeScript · Tailwind v4 · Recharts · lucide-react |
-| Deployment-ready | Vercel (frontend) · Render/Fly (backend) · Neon (database) |
+## Stack
 
-## Run it locally
+Python · pandas · tabula · statsmodels · joblib · SQLAlchemy · PostgreSQL (Neon) · FastAPI · pydantic · uvicorn  ·  Next.js · TypeScript · Tailwind · Recharts  ·  Vercel (frontend) · Render (API) · Neon (database)
 
-**Prerequisites:** Python 3.11+, Node 20+, a Postgres database (free Neon instance works).
+## Running locally
+
+You'll need Python 3.11+ and Node 20+. From the repo root:
 
 ```bash
-# 1. Backend
-git clone https://github.com/vigneshdinesha/nys-public-demand-simulator.git
-cd nys-public-demand-simulator
-python3 -m venv .venv && source .venv/bin/activate
+# backend
+cd api
 pip install -r requirements.txt
-cp .env.example .env       # then fill in DATABASE_URL
-uvicorn main:app --reload --port 8000
-```
+cp .env.example .env   # set DATABASE_URL
+python -m uvicorn app:app --reload --port 8000
 
-Auto-generated API docs at <http://localhost:8000/docs>.
-
-```bash
-# 2. Frontend (in a second terminal)
-cd dashboard
+# frontend (in another shell)
+cd web
 npm install
 npm run dev
 ```
 
-Open <http://localhost:3000>. The dashboard auto-runs the NYC recession preset on load.
+The frontend talks to `http://localhost:8000` by default; change `NEXT_PUBLIC_API_BASE` if you point it elsewhere.
 
-To rebuild the dataset from scratch you'll also need the raw CSVs (excluded from this repo — they total 343 MB). Download links are in [`data/raw/SOURCES.md`](data/raw/SOURCES.md).
+To rebuild the panel from raw inputs, run `python etl.py` (expects the raw files in `data/raw/`, which are not in the repo — they're 343 MB and the sources are linked in `data/SOURCES.md`).
 
-## Repository layout
+## What's next
 
-```
-.
-├── etl.py                   # 6-dataset ingestion + merge
-├── analysis.py              # lag analysis, COVID validation
-├── regression.py            # region-specific OLS models
-├── simulate.py              # SimulationEngine class
-├── main.py                  # FastAPI app
-├── data/
-│   ├── extract_medicaid.py  # PDF → structured time-series pipeline
-│   ├── clean_unemployment.py
-│   ├── clean_population.py
-│   ├── processed/           # cleaned per-source CSVs
-│   └── outputs/             # unified panel + diagnostics
-├── dashboard/
-│   └── src/
-│       ├── app/             # Next.js routes
-│       ├── components/      # ScenarioBuilder, SimulationResults, ConfidenceBadge, …
-│       └── lib/             # types + API client
-├── model_coefficients.csv   # regression outputs consumed by simulator
-├── region_models.pkl        # serialized statsmodels objects
-└── requirements.txt
-```
+- HAC / Newey-West standard errors for honest inference
+- Time-split backtest before I can call any of this predictive
+- A small automated test suite around the PDF extractor (right now its safety net is the validation harness, which runs after the fact)
+- Maybe bringing crash + transit data in as candidate features with proper selection rather than as context
+
+## Data sources
+
+All public. Full list with links in [`data/SOURCES.md`](data/SOURCES.md). Synthetic / no PII at any point.
 
 ## License
 
-MIT — see [`LICENSE`](LICENSE).
+MIT — use the code, please don't claim my analysis as yours.

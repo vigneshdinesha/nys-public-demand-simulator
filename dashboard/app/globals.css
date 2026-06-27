@@ -194,6 +194,26 @@
   animation: gradient-x 6s ease infinite;
 }
 
+/* Surging glow line at the skyline fill boundary */
+@keyframes surge {
+  0%, 100% { opacity: 0.45; }
+  50%      { opacity: 1; }
+}
+
+.animate-surge {
+  animation: surge 1.4s ease-in-out infinite;
+}
+
+/* Gentle star twinkle */
+@keyframes twinkle {
+  0%, 100% { opacity: 0.25; }
+  50%      { opacity: 0.9; }
+}
+
+.animate-twinkle {
+  animation: twinkle 3s ease-in-out infinite;
+}
+
 /* Expanding ring for the "shock" ripple */
 @keyframes ripple-out {
   0%   { transform: scale(0.65); opacity: 0.5; }

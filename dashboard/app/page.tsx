@@ -7,6 +7,7 @@ import { MethodologySection } from "@/components/story/methodology-section"
 import { StoryFooter } from "@/components/story/story-footer"
 import { Simulator } from "@/components/simulator"
 import { Reveal } from "@/components/reveal"
+import { LoadingScreen } from "@/components/loading-screen"
 
 const GITHUB_URL = "https://github.com/vigneshdinesha/nys-public-demand-simulator"
 
@@ -22,6 +23,8 @@ const DATA_SOURCES = [
 export default function Home() {
   return (
     <div className="relative min-h-screen">
+      <LoadingScreen />
+
       {/* Ambient aurora wash behind the whole story */}
       <div className="pointer-events-none fixed inset-0 -z-10 opacity-60 aurora" aria-hidden />
 

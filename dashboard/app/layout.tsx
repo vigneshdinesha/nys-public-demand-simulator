@@ -1,22 +1,24 @@
 import type { Metadata, Viewport } from 'next'
-import { Inter, DM_Mono, Syne } from 'next/font/google'
+import { Inter, DM_Mono, Fraunces } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import './globals.css'
 
-const inter = Inter({ 
+const inter = Inter({
   subsets: ["latin"],
   variable: "--font-inter",
 })
 
-const dmMono = DM_Mono({ 
+const dmMono = DM_Mono({
   subsets: ["latin"],
   weight: ["400", "500"],
   variable: "--font-dm-mono",
 })
 
-const syne = Syne({
+// Editorial display serif — characterful, optical-sized: serious but expressive.
+const fraunces = Fraunces({
   subsets: ["latin"],
-  variable: "--font-syne",
+  style: ["normal", "italic"],
+  variable: "--font-display-serif",
 })
 
 export const metadata: Metadata = {
@@ -57,7 +59,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="bg-background">
-      <body className={`${inter.variable} ${dmMono.variable} ${syne.variable} font-sans antialiased`}>
+      <body className={`${inter.variable} ${dmMono.variable} ${fraunces.variable} font-sans antialiased`}>
         {children}
         {process.env.NODE_ENV === 'production' && <Analytics />}
       </body>

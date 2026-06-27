@@ -8,7 +8,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
-import { Github, Info } from "lucide-react"
+import { Github, Info, LineChart } from "lucide-react"
 
 interface DataSource {
   label: string
@@ -24,9 +24,12 @@ export function Header({ dataSources, githubUrl = "https://github.com" }: Header
   return (
     <header className="sticky top-0 z-50 w-full border-b border-slate-200/60 bg-white/80 backdrop-blur-md">
       <div className="mx-auto flex h-16 max-w-[1600px] items-center justify-between px-6">
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
+          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-accent shadow-lg shadow-primary/25">
+            <LineChart className="h-6 w-6 text-white" strokeWidth={2.2} />
+          </div>
           <div>
-            <h1 className="text-lg font-semibold tracking-tight text-slate-900">
+            <h1 className="font-display text-lg font-bold tracking-tight text-slate-900">
               NYS Demand Simulator
             </h1>
             <p className="text-sm text-slate-500">

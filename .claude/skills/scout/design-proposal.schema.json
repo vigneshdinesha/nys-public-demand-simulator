@@ -1,0 +1,117 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://nys-data.local/schemas/design-proposal.schema.json",
+  "title": "DesignProposal",
+  "description": "A scout's proposal for adapting reference-site design into this project's design system. Proposes only; adoption is a separate gated step.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["proposal_id", "target", "created_at", "scout_version", "sources", "adoption"],
+  "properties": {
+    "proposal_id": {
+      "type": "string",
+      "description": "Stable id, e.g. dp-20260627-1432-page-hero."
+    },
+    "target": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "ref"],
+      "properties": {
+        "kind": { "type": "string", "enum": ["route", "component", "global"] },
+        "ref": { "type": "string", "description": "Route path, component path, or 'global'." },
+        "slug": { "type": "string", "description": "Filename-safe target slug." }
+      }
+    },
+    "created_at": { "type": "string", "format": "date-time" },
+    "scout_version": { "type": "string" },
+    "sources": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["url", "captured_at"],
+        "properties": {
+          "url": { "type": "string", "format": "uri" },
+          "captured_at": { "type": "string", "format": "date-time" },
+          "capture_method": { "type": "string", "enum": ["playwright", "webfetch", "manual"], "description": "How the source was captured. webfetch lowers confidence (no rendered styles)." },
+          "viewports": {
+            "type": "array",
+            "items": { "type": "integer", "description": "Viewport width in px, e.g. 1440, 390." }
+          },
+          "screenshot_refs": {
+            "type": "array",
+            "items": { "type": "string", "description": "Path to a captured screenshot." }
+          },
+          "notes": { "type": "string", "description": "What works here, in design terms." }
+        }
+      }
+    },
+    "token_changes": {
+      "type": "array",
+      "description": "Deltas against our existing tokens. Final values are token names, never raw hex/px.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["token", "category", "proposed_value", "provenance", "confidence", "rationale", "conflict"],
+        "properties": {
+          "token": { "type": "string", "description": "Our token name, e.g. --primary, --accent, --radius, --font-display, or a proposed --ease-* token." },
+          "category": { "type": "string", "enum": ["color", "type", "space", "radius", "shadow", "motion"] },
+          "is_new_token": { "type": "boolean", "default": false, "description": "True if this token does not yet exist and is being proposed." },
+          "current_value": { "type": "string", "description": "Existing token value, or null if new." },
+          "proposed_value": { "type": "string", "description": "Proposed token value (in this project's units, e.g. oklch for color)." },
+          "evidence_raw": { "type": "string", "description": "Raw extracted value from the source (evidence only, not the recommendation)." },
+          "source_ref": { "type": "string", "format": "uri", "description": "Which source URL this came from." },
+          "provenance": { "type": "string", "description": "Element/selector or region on the source that motivated this." },
+          "confidence": { "type": "string", "enum": ["low", "medium", "high"] },
+          "rationale": { "type": "string" },
+          "conflict": { "type": "boolean", "description": "True if this collides with an existing token's intended role." },
+          "conflict_detail": { "type": "string" }
+        }
+      }
+    },
+    "component_suggestions": {
+      "type": "array",
+      "description": "Discrete, rankable component- or layout-level ideas.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "target_component", "summary", "change_type", "impact", "effort", "priority_score", "source_ref", "provenance", "confidence", "rationale"],
+        "properties": {
+          "id": { "type": "string" },
+          "target_component": { "type": "string", "description": "Path or name of the component/layout this touches, e.g. components/header.tsx." },
+          "summary": { "type": "string" },
+          "change_type": { "type": "string", "enum": ["layout", "composition", "interaction", "motion", "treatment", "hierarchy"] },
+          "impact": { "type": "string", "enum": ["low", "medium", "high"] },
+          "effort": { "type": "string", "enum": ["low", "medium", "high"] },
+          "priority_score": { "type": "number", "description": "Higher = do first. Convention: high impact / low effort scores highest." },
+          "source_ref": { "type": "string", "format": "uri" },
+          "provenance": { "type": "string" },
+          "depends_on_tokens": {
+            "type": "array",
+            "items": { "type": "string", "description": "token names from token_changes this suggestion needs." }
+          },
+          "confidence": { "type": "string", "enum": ["low", "medium", "high"] },
+          "rationale": { "type": "string" }
+        }
+      }
+    },
+    "open_questions": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Things the scout could not resolve and that a human/lead should decide."
+    },
+    "adoption": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status"],
+      "properties": {
+        "status": { "type": "string", "enum": ["proposed", "accepted", "partial", "rejected"], "default": "proposed" },
+        "accepted_token_changes": { "type": "array", "items": { "type": "string" }, "description": "token names accepted, when status is partial." },
+        "accepted_suggestions": { "type": "array", "items": { "type": "string" }, "description": "suggestion ids accepted, when status is partial." },
+        "reviewer": { "type": "string" },
+        "decided_at": { "type": "string", "format": "date-time" },
+        "issue_url": { "type": "string", "format": "uri", "description": "Optional GitHub issue tracking this proposal." }
+      }
+    }
+  }
+}

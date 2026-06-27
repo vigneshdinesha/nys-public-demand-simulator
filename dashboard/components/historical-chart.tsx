@@ -1,5 +1,6 @@
 "use client"
 
+import { useMemo } from "react"
 import {
   LineChart,
   Line,
@@ -11,14 +12,32 @@ import {
   ReferenceLine,
   Legend,
 } from "recharts"
-import type { HistoricalDataPoint } from "@/lib/types"
+import type { HistoricalDataPoint, SimulationResult } from "@/lib/types"
 
 interface HistoricalChartProps {
   data: HistoricalDataPoint[]
   county: string
+  simulation?: SimulationResult | null
 }
 
-export function HistoricalChart({ data, county }: HistoricalChartProps) {
+// How many months of scenario projection to draw past "now".
+const PROJECTION_MONTHS = 6
+
+type ChartPoint = HistoricalDataPoint & {
+  medicaid_baseline?: number | null
+  medicaid_scenario?: number | null
+  unemp_scenario?: number | null
+}
+
+function addMonths(month: string, k: number): string {
+  const [y, m] = month.split("-").map(Number)
+  const total = (m - 1) + k
+  const ny = y + Math.floor(total / 12)
+  const nm = (total % 12) + 1
+  return `${ny}-${String(nm).padStart(2, "0")}`
+}
+
+export function HistoricalChart({ data, county, simulation }: HistoricalChartProps) {
   // A series is "available" only if at least one point has a non-null value.
   const hasMedicaid = data.some((d) => d.medicaid_per_1k != null)
   const hasSnap     = data.some((d) => d.snap_per_1k != null)
@@ -28,8 +47,53 @@ export function HistoricalChart({ data, county }: HistoricalChartProps) {
       ? "SNAP not reported at the borough level — only city-district totals are published."
       : null
 
+  // Build the historical series + a dashed scenario projection from "now".
+  const { chartData, nowMonth, hasProjection, lowConfidence } = useMemo(() => {
+    const med = simulation?.predictions?.medicaid
+    const lastPoint = data[data.length - 1]
+    const lastMonth = lastPoint?.month?.slice(0, 7) // "YYYY-MM"
+
+    if (!med || med.predicted_per_1k == null || !lastPoint || !lastMonth || !hasMedicaid) {
+      return { chartData: data as ChartPoint[], nowMonth: null as string | null, hasProjection: false, lowConfidence: false }
+    }
+
+    const anchorMed = lastPoint.medicaid_per_1k ?? med.current_per_1k ?? med.predicted_per_1k
+    const targetMed = med.predicted_per_1k
+    const anchorUnemp = lastPoint.unemp_rate ?? simulation!.current_unemp
+    const targetUnemp = simulation!.shocked_unemp
+
+    // Anchor the projection on the last real point so the dashed lines connect.
+    const anchored: ChartPoint[] = data.map((d, i) =>
+      i === data.length - 1
+        ? { ...d, medicaid_baseline: anchorMed, medicaid_scenario: anchorMed, unemp_scenario: anchorUnemp }
+        : d,
+    )
+
+    // Medicaid ramps toward the modeled level; the unemployment shock lands immediately.
+    const projected: ChartPoint[] = Array.from({ length: PROJECTION_MONTHS }, (_, idx) => {
+      const step = (idx + 1) / PROJECTION_MONTHS
+      return {
+        month: addMonths(lastMonth, idx + 1),
+        year: 0,
+        unemp_rate: null,
+        medicaid_per_1k: null,
+        snap_per_1k: null,
+        medicaid_baseline: anchorMed,
+        medicaid_scenario: anchorMed + (targetMed - anchorMed) * step,
+        unemp_scenario: targetUnemp,
+      }
+    })
+
+    return {
+      chartData: [...anchored, ...projected],
+      nowMonth: lastMonth,
+      hasProjection: true,
+      lowConfidence: med.confidence !== "high",
+    }
+  }, [data, simulation, hasMedicaid])
+
   const formatMonth = (dateStr: string) => {
-    // dateStr is "YYYY-MM" — parse manually to avoid UTC-shift on US timezones
+    // dateStr is "YYYY-MM" or "YYYY-MM-DD" — parse manually to avoid UTC-shift
     const [y, m] = dateStr.split("-")
     const date = new Date(Number(y), Number(m) - 1, 1)
     return date.toLocaleDateString("en-US", { month: "short", year: "2-digit" })
@@ -42,19 +106,21 @@ export function HistoricalChart({ data, county }: HistoricalChartProps) {
           <p className="mb-2 text-xs font-medium text-slate-500">
             {label ? formatMonth(label) : ""}
           </p>
-          {payload.map((entry, index) => (
-            <div key={index} className="flex items-center gap-2 text-sm">
-              <span
-                className="h-2 w-2 rounded-full"
-                style={{ backgroundColor: entry.color }}
-              />
-              <span className="text-slate-600">{entry.name}:</span>
-              <span className="font-medium text-slate-900">
-                {entry.value?.toFixed(1)}
-                {entry.name === "Unemployment %" ? "%" : ""}
-              </span>
-            </div>
-          ))}
+          {payload
+            .filter((entry) => entry.value != null)
+            .map((entry, index) => (
+              <div key={index} className="flex items-center gap-2 text-sm">
+                <span
+                  className="h-2 w-2 rounded-full"
+                  style={{ backgroundColor: entry.color }}
+                />
+                <span className="text-slate-600">{entry.name}:</span>
+                <span className="font-medium text-slate-900">
+                  {entry.value?.toFixed(1)}
+                  {entry.name.includes("Unemployment") ? "%" : ""}
+                </span>
+              </div>
+            ))}
         </div>
       )
     }
@@ -65,7 +131,9 @@ export function HistoricalChart({ data, county }: HistoricalChartProps) {
     <div className="rounded-2xl border border-slate-200/60 bg-white p-6 shadow-sm transition-shadow hover:shadow-md">
       <div className="mb-4 flex items-start justify-between gap-4">
         <div>
-          <h3 className="text-sm font-semibold text-slate-900">Historical Trends</h3>
+          <h3 className="text-sm font-semibold text-slate-900">
+            {hasProjection ? "Historical Trends & Scenario Projection" : "Historical Trends"}
+          </h3>
           <p className="text-xs text-slate-500">{county} County · 2018–2025</p>
         </div>
         {snapMissingNote && (
@@ -74,10 +142,10 @@ export function HistoricalChart({ data, county }: HistoricalChartProps) {
           </p>
         )}
       </div>
-      
+
       <div className="h-64">
         <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={data} margin={{ top: 5, right: 30, left: 0, bottom: 5 }}>
+          <LineChart data={chartData} margin={{ top: 5, right: 30, left: 0, bottom: 5 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
             <XAxis
               dataKey="month"
@@ -130,6 +198,19 @@ export function HistoricalChart({ data, county }: HistoricalChartProps) {
                 style: { fontSize: 10, fill: "#f59e0b", fontWeight: 500 },
               }}
             />
+            {nowMonth && (
+              <ReferenceLine
+                x={nowMonth}
+                yAxisId="left"
+                stroke="#94a3b8"
+                strokeDasharray="4 4"
+                label={{
+                  value: "now",
+                  position: "top",
+                  style: { fontSize: 10, fill: "#64748b", fontWeight: 500 },
+                }}
+              />
+            )}
             {hasMedicaid && (
               <Line
                 yAxisId="left"
@@ -169,9 +250,60 @@ export function HistoricalChart({ data, county }: HistoricalChartProps) {
                 connectNulls={false}
               />
             )}
+
+            {/* Scenario projection (dashed) */}
+            {hasProjection && (
+              <>
+                <Line
+                  yAxisId="left"
+                  type="monotone"
+                  dataKey="medicaid_baseline"
+                  name="Medicaid — no change"
+                  stroke="#94a3b8"
+                  strokeWidth={2}
+                  strokeDasharray="5 4"
+                  dot={false}
+                  connectNulls
+                  legendType="plainline"
+                />
+                <Line
+                  yAxisId="left"
+                  type="monotone"
+                  dataKey="medicaid_scenario"
+                  name="Medicaid — your scenario"
+                  stroke="#2563eb"
+                  strokeWidth={2.5}
+                  strokeDasharray="5 4"
+                  dot={false}
+                  connectNulls
+                  legendType="plainline"
+                />
+                <Line
+                  yAxisId="right"
+                  type="monotone"
+                  dataKey="unemp_scenario"
+                  name="Unemployment — your scenario"
+                  stroke="#f43f5e"
+                  strokeWidth={2}
+                  strokeDasharray="5 4"
+                  dot={false}
+                  connectNulls
+                  legendType="plainline"
+                />
+              </>
+            )}
           </LineChart>
         </ResponsiveContainer>
       </div>
+
+      {hasProjection && (
+        <p className="mt-3 text-[11px] leading-snug text-slate-400">
+          Dashed lines project your scenario {PROJECTION_MONTHS} months past “now”: the
+          unemployment shock lands immediately while Medicaid ramps toward the modeled level,
+          against a held-flat baseline. Illustrative — not a forecast of future unemployment.
+          {lowConfidence && " This region's Medicaid response to unemployment is a weak signal — treat the projection as a rough indicator."}
+        </p>
+      )}
     </div>
   )
 }

@@ -10,39 +10,39 @@
   --card-foreground: oklch(0.2 0.02 45);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.2 0.02 45);
-  --primary: oklch(0.65 0.18 45);
+  --primary: oklch(0.63 0.22 42);
   --primary-foreground: oklch(0.985 0 0);
   --secondary: oklch(0.96 0.015 60);
   --secondary-foreground: oklch(0.3 0.03 45);
   --muted: oklch(0.96 0.01 60);
   --muted-foreground: oklch(0.5 0.02 45);
-  --accent: oklch(0.55 0.12 200);
+  --accent: oklch(0.54 0.17 252);
   --accent-foreground: oklch(0.985 0 0);
   --destructive: oklch(0.55 0.2 25);
   --destructive-foreground: oklch(0.55 0.2 25);
   --border: oklch(0.92 0.015 60);
   --input: oklch(0.92 0.015 60);
-  --ring: oklch(0.65 0.18 45);
-  --chart-1: oklch(0.65 0.18 45);
-  --chart-2: oklch(0.55 0.12 200);
+  --ring: oklch(0.63 0.22 42);
+  --chart-1: oklch(0.63 0.22 42);
+  --chart-2: oklch(0.54 0.17 252);
   --chart-3: oklch(0.6 0.15 75);
   --chart-4: oklch(0.55 0.2 25);
   --chart-5: oklch(0.5 0.08 45);
   --radius: 0.75rem;
   --sidebar: oklch(1 0 0);
   --sidebar-foreground: oklch(0.2 0.02 45);
-  --sidebar-primary: oklch(0.65 0.18 45);
+  --sidebar-primary: oklch(0.63 0.22 42);
   --sidebar-primary-foreground: oklch(0.985 0 0);
   --sidebar-accent: oklch(0.96 0.015 60);
   --sidebar-accent-foreground: oklch(0.3 0.03 45);
   --sidebar-border: oklch(0.92 0.015 60);
-  --sidebar-ring: oklch(0.65 0.18 45);
+  --sidebar-ring: oklch(0.63 0.22 42);
 }
 
 @theme inline {
   --font-sans: var(--font-inter), system-ui, sans-serif;
   --font-mono: var(--font-dm-mono), 'DM Mono', monospace;
-  --font-display: var(--font-syne), 'Syne', system-ui, sans-serif;
+  --font-display: var(--font-display-serif), 'Fraunces', Georgia, serif;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -85,14 +85,25 @@
   * {
     @apply border-border outline-ring/50;
   }
+  html {
+    scroll-behavior: smooth;
+  }
   body {
     @apply bg-background text-foreground;
   }
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+  }
 }
 
-/* Custom font-display utility */
+/* Custom font-display utility — editorial serif, optically sized + tightened */
 .font-display {
   font-family: var(--font-display);
+  font-optical-sizing: auto;
+  letter-spacing: -0.02em;
+  font-feature-settings: "ss01";
 }
 
 /* Smooth animations */
@@ -108,5 +119,98 @@
 }
 
 .animate-fade-up {
-  animation: fade-up 0.4s ease-out;
+  animation: fade-up 0.4s ease-out both;
+}
+
+/* Indeterminate loading bar that slides across its track */
+@keyframes slide-loop {
+  0%   { transform: translateX(-110%); }
+  100% { transform: translateX(320%); }
+}
+
+.animate-slide-loop {
+  animation: slide-loop 1.3s cubic-bezier(0.65, 0, 0.35, 1) infinite;
+}
+
+/* Soft breathing glow for the logo mark */
+@keyframes pulse-glow {
+  0%, 100% { opacity: 0.35; transform: scale(1); }
+  50%      { opacity: 0.7;  transform: scale(1.08); }
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 2.4s ease-in-out infinite;
+}
+
+/* Slow vertical float for ambient accents */
+@keyframes float-slow {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-14px); }
+}
+
+.animate-float-slow {
+  animation: float-slow 7s ease-in-out infinite;
+}
+
+/* Drifting aurora gradient background */
+@keyframes aurora-drift {
+  0%   { transform: translate3d(-6%, -4%, 0) rotate(0deg) scale(1.1); }
+  33%  { transform: translate3d(6%, 3%, 0) rotate(8deg) scale(1.2); }
+  66%  { transform: translate3d(-3%, 6%, 0) rotate(-6deg) scale(1.15); }
+  100% { transform: translate3d(-6%, -4%, 0) rotate(0deg) scale(1.1); }
+}
+
+/*
+  Aurora: layered radial blooms in the brand palette that slowly drift.
+  Use on a positioned, overflow-hidden parent (typically with -z-10).
+*/
+.aurora::before,
+.aurora::after {
+  content: "";
+  position: absolute;
+  inset: -25%;
+  background:
+    radial-gradient(38% 38% at 22% 28%, oklch(0.63 0.22 42 / 0.34), transparent 70%),
+    radial-gradient(34% 34% at 78% 22%, oklch(0.54 0.17 252 / 0.32), transparent 70%),
+    radial-gradient(42% 42% at 62% 82%, oklch(0.7 0.19 70 / 0.26), transparent 72%);
+  filter: blur(58px);
+  animation: aurora-drift 24s ease-in-out infinite;
+}
+
+.aurora::after {
+  animation-duration: 32s;
+  animation-direction: reverse;
+  opacity: 0.7;
+}
+
+/* Animated gradient sweep for display text / accents */
+@keyframes gradient-x {
+  0%, 100% { background-position: 0% 50%; }
+  50%      { background-position: 100% 50%; }
+}
+
+.animate-gradient-x {
+  background-size: 200% 200%;
+  animation: gradient-x 6s ease infinite;
+}
+
+/* Expanding ring for the "shock" ripple */
+@keyframes ripple-out {
+  0%   { transform: scale(0.65); opacity: 0.5; }
+  100% { transform: scale(2.1);  opacity: 0; }
+}
+
+.animate-ripple {
+  animation: ripple-out 3s ease-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-gradient-x,
+  .animate-ripple,
+  .animate-float-slow,
+  .animate-pulse-glow,
+  .aurora::before,
+  .aurora::after {
+    animation: none;
+  }
 }

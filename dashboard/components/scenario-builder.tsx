@@ -71,7 +71,7 @@ export function ScenarioBuilder({
   }
 
   return (
-    <aside className="flex h-full w-80 flex-col border-r border-slate-200/60 bg-white p-6">
+    <aside className="flex w-full flex-col rounded-2xl border border-slate-200/60 bg-white/90 p-6 shadow-sm backdrop-blur">
       <div className="mb-6">
         <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-500">
           Scenario Builder
